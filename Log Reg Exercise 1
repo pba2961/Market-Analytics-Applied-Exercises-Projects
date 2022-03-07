@@ -1,0 +1,84 @@
+
+deafultData<-read.csv(file.choose())
+
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(psych)
+library(corrplot)
+
+install.packages("MASS")
+install.packages("descr")
+library(MASS)
+library(descr)
+
+summary(deafultData)
+str(deafultData,give.attr=FALSE)
+
+ggplot(deafultData,aes(X=PaymentDefault))+geom_histogram(stat="count")
+
+deafultData$sex<-as.factor(deafultData$sex)
+deafultData$marriage<-as.factor(deafultData$marriage)
+
+logitModelFull<-glm(PaymentDefault~limitBal+sex+education+marriage+age+billAmt2+billAmt3+billAmt4+billAmt5+billAmt6+payAmt1+payAmt2+payAmt3+payAmt4+payAmt5+payAmt6,family=binomial,data=deafultData)
+
+summary(logitModelFull)
+
+LogRegR2(logitModelFull)
+
+summary(logitModelFull)
+
+coefsexp<-coef(logitModelFull) %>%exp()%>% round(2)
+coefsexp
+
+summary(logitModelFull)
+
+logitModelFullNew<-stepAIC(logitModelFull,trace = 0)
+summary(logitModelFullNew)
+
+formulaLogit<-as.formula(summary(logitModelFullNew)$call)
+formulaLogit
+
+
+coefsexp2<-coef(logitModelFullNew)%>% exp()%>% round(2)
+coefsexp2
+
+LogRegR2(logitModelFullNew)
+
+#install.packages("SDMTools")         
+#install.packages("SDMTools","http://rforge.net/",type="source")
+library(SDMTools)
+
+deafultData$predFull<-predict(logitModelFull,type="response",na.action = na.exclude)
+confMatrixModeFull<-confusion.matrix(deafultData$PaymentDefault,deafultData$predFull,threshold = 0.5)
+
+confMatrixModeFull
+accuracyFull<-sum(diag(confMatrixModeFull))/sum(confMatrixModeFull)
+accuracyFull
+
+deafultData$predNew<-predict(logitModelFullNew,type = "response",na.action = na.exclude)
+confMatrixModeNew<-confusion.matrix(deafultData$PaymentDefault,deafultData$predNew,threshold = 0.5)
+confMatrixModeNew
+
+accuracyNew<-sum(diag(confMatrixModeNew))/sum(confMatrixModeNew)
+accuracyNew
+
+summary(logitModelFull)
+payoffMatrix<-data.frame(threshold=seq(from=0.1,to=0.5,by=0.1),payoff=NA)
+payoffMatrix
+
+for(i in 1:length(payoffMatrix$threshold)) {
+  "confMatrix <- confusion.matrix(deafultData$PaymentDefault, deafultData$predNew, threshold = payoffMatrix$threshold[i]) payoffMatrix$payoff[i] <- confMatrix[2,2]*1000 + confMatrix[2,1]*(-250)"
+}
+
+payoffMatrix
+
+
+set.seed(534381)
+deafultData$isTrain<-rbinom(nrow(deafultData),1,0.66)
+train<-subset(deafultData,deafultData$isTrain==1)
+test<-subset(deafultData,deafultData$isTrain==0)
+
+logitTraiNew<-glm(formulaLogit,family = binomial,data=train)#Modeling
+test$predNew<-predict(logitTrainNew,type="response",newdata=test)#predictions
+confMatrixModelNew<- confusion.matrix(test$PaymentDefault,test$predNew,threshold = 0.2)
