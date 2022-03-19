@@ -1,2 +1,2 @@
 # R-studio-
-Logistic Regression for Marketing Analytics Exercise
+R programing projects for Marketing Analytics
